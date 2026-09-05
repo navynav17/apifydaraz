@@ -88,7 +88,7 @@ function categoryTextMatch(url:string,category:string){
 function extractProductLinks(html:string):string[]{
   const $=load(html),out=new Set<string>();
   $('a[href]').each((_,e)=>{const href=$(e).attr('href');if(!href)return;const u=normalizeUrl(href);if(isProductUrl(u)&&new URL(u).hostname===new URL(BASE).hostname)out.add(u);});
-  const raw=html.match(/https?:\\/\\/www\\.daraz\\.com\\.np\\/i\d+(?:-s\d+)?\\.html/gi)||[];
+  const raw=html.match(/https?:\/\/www\.daraz\.com\.np\/i\d+(?:-s\d+)?\.html/gi)||[];
   for(const x of raw)out.add(normalizeUrl(x.replace(/\\/g,'')));
   return [...out];
 }
