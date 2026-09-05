@@ -6,14 +6,20 @@
     "brand": {
       "title": "Brand",
       "type": "string",
-      "description": "Brand to search. Every Daraz search uses Brand + Category.",
+      "description": "Optional brand. Used only when Strict Brand is enabled.",
       "editor": "textfield",
       "default": "Samsung"
+    },
+    "strictBrand": {
+      "title": "Strict Brand Search",
+      "type": "boolean",
+      "description": "When false, discover the full category. When true, search Brand + Category only.",
+      "default": false
     },
     "category": {
       "title": "Category",
       "type": "string",
-      "description": "Category to search together with the brand.",
+      "description": "Category to discover on Daraz.",
       "editor": "select",
       "enum": ["smartphone","tablet","laptop","desktop computer","printer","camera","smart tv","computer monitor","refrigerator","washing machine","air conditioner","dishwasher"],
       "default": "smartphone"
@@ -21,7 +27,7 @@
     "maxSearchPages": {
       "title": "Maximum Search Pages",
       "type": "integer",
-      "description": "Maximum Daraz search pages for the Brand + Category query.",
+      "description": "Maximum Daraz search pages. Daraz listing responses commonly expose about 40 products per page.",
       "default": 100,
       "minimum": 1,
       "maximum": 100
@@ -29,14 +35,14 @@
     "minPrice": {
       "title": "Minimum Price (NPR)",
       "type": "integer",
-      "description": "Exclude products whose final PDP price is below this amount.",
+      "description": "Exclude products whose listing price is below this amount.",
       "default": 5000,
       "minimum": 0
     },
     "pdpConcurrency": {
       "title": "PDP HTTP Concurrency",
       "type": "integer",
-      "description": "Number of product pages requested concurrently.",
+      "description": "Unused in the current HTTP search-only collector. PDP fetching is disabled.",
       "default": 6,
       "minimum": 1,
       "maximum": 30
@@ -44,7 +50,7 @@
     "detailDelayMs": {
       "title": "PDP Delay (ms)",
       "type": "integer",
-      "description": "Delay between PDP requests.",
+      "description": "Unused in the current HTTP search-only collector. PDP fetching is disabled.",
       "default": 100,
       "minimum": 0,
       "maximum": 10000
@@ -58,5 +64,5 @@
       "maximum": 3600
     }
   },
-  "required": ["brand","category"]
+  "required": ["category"]
 }
