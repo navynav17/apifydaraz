@@ -12,32 +12,10 @@ type Product={title:string;url:string;itemId:string;price:number;image?:string;b
 const clean=(v:any)=>String(v??'').replace(/\s+/g,' ').trim();
 const num=(v:any)=>{const m=String(v??'').replace(/,/g,'').match(/\d+(?:\.\d+)?/);return m?Number(m[0]):undefined;};
 const price=(v:any)=>{if(v==null)return undefined;if(typeof v==='number')return v;const s=clean(v);const m=s.match(/(?:Rs\.?|NPR)?\s*[\d,]+(?:\.\d+)?/i);return m?num(m[0]):num(s);};
-function deepPrice(raw:any):number|undefined{const preferred=['priceShow','price','salePrice','discountPrice','currentPrice','sellingPrice','specialPrice','finalPrice','promotionPrice'];const seen=new Set<any>();const walk=(v:any,key=''):number|undefined=>{if(v==null)return;if(typeof v==='string'||typeof v==='number'){if(preferred.some(k=>k.toLowerCase()===key.toLowerCase())){const p=price(v);if(p!==undefined)return p;}return;}if(typeof v!=='object'||seen.has(v))return;seen.add(v);if(Array.isArray(v)){for(const x of v){const p=walk(x,key);if(p!==undefined)return p;}return;}for(const[k,x]of Object.entries(v)){const p=walk(x,k);if(p!==undefined)return p;}};for(const k of preferred){const p=walk(raw,k);if(p!==undefined)return p;}return walk(raw);}
-let priceDiagnostics=0;
-function priceShape(raw:any){
-  const interesting:any[]=[];
-  const walk=(v:any,path='')=>{
-    if(v==null||interesting.length>=40)return;
-    if(Array.isArray(v)){v.slice(0,20).forEach((x,i)=>walk(x,`${path}[${i}]`));return;}
-    if(typeof v!=='object')return;
-    for(const[k,val]of Object.entries(v)){
-      const p=path?`${path}.${k}`:k;
-      if(/price|amount|sale|selling|discount|promotion|value/i.test(k)){
-        let shown:any=val;
-        if(typeof val==='object'&&val!==null){
-          const keys=Object.keys(val).slice(0,15);
-          shown={type:Array.isArray(val)?'array':'object',keys};
-        }else shown=String(val).slice(0,120);
-        interesting.push({path:p,value:shown});
-      }
-      if(typeof val==='object'&&val!==null)walk(val,p);
-      if(interesting.length>=40)break;
-    }
-  };
-  walk(raw);
-  const top=raw&&typeof raw==='object'&&!Array.isArray(raw)?Object.keys(raw):[];
-  console.log(`PRICE_DIAG | title=${clean(raw?.name||raw?.title||'').slice(0,100)} | itemId=${clean(raw?.itemId||raw?.item_id||raw?.productId||'')} | topKeys=${top.slice(0,60).join(',')} | priceFields=${JSON.stringify(interesting)}`);
-}
+const PRICE_KEYS=/price|amount|sale|selling|discount|promotion|special|final|value/i;
+let priceDiagCount=0;
+function priceDiag(x:any){if(priceDiagCount>=5)return;priceDiagCount++;const top=Object.keys(x||{});const matches:any={};const walk=(v:any,path='')=>{if(v==null||path.split('.').length>5)return;if(typeof v!=='object'){if(PRICE_KEYS.test(path))matches[path]=String(v).slice(0,180);return;}if(Array.isArray(v)){v.slice(0,20).forEach((z,i)=>walk(z,`${path}[${i}]`));return;}for(const[k,z]of Object.entries(v)){const p=path?`${path}.${k}`:k;if(PRICE_KEYS.test(k)||PRICE_KEYS.test(p))walk(z,p);else if(typeof z==='object')walk(z,p);}};walk(x);console.log(`PRICE_DIAG | title=${JSON.stringify(clean(x?.name||x?.title||'').slice(0,120))} | itemId=${x?.itemId||x?.item_id||x?.productId||''} | topKeys=${JSON.stringify(top)} | priceFields=${JSON.stringify(matches)}`);}
+function deepPrice(raw:any):number|undefined{const preferred=['priceShow','price','salePrice','discountPrice','currentPrice','sellingPrice','specialPrice','finalPrice','promotionPrice'];const seen=new Set<any>();const walk=(v:any,key=''):number|undefined=>{if(v==null)return; if(typeof v==='string'||typeof v==='number'){if(preferred.some(k=>k.toLowerCase()===key.toLowerCase())){const p=price(v);if(p!==undefined)return p;}return;} if(typeof v!=='object'||seen.has(v))return;seen.add(v); if(Array.isArray(v)){for(const x of v){const p=walk(x,key);if(p!==undefined)return p;}return;} for(const[k,x]of Object.entries(v)){const p=walk(x,k);if(p!==undefined)return p;} }; for(const k of preferred){const p=walk(raw,k);if(p!==undefined)return p;} return walk(raw);}
 const normalize=(v:any)=>{let x=String(v??'').replace(/\\\//g,'/').replace(/\\u002F/gi,'/').replace(/&amp;/gi,'&').trim();if(x.startsWith('//'))x='https:'+x;try{const u=new URL(x,BASE);return u.hostname.endsWith('daraz.com.np')?`${BASE}${u.pathname}`:x;}catch{return x;}};
 const idOf=(u:string)=>u.match(/(?:\/i|\/products\/[^?#]*?-i)(\d+)/i)?.[1]||u;
 const isProduct=(u:string)=>/\/(?:i\d+(?:-s\d+)?|products\/[^?#]*-i\d+(?:-s\d+)?)\.html/i.test(u);
@@ -46,7 +24,7 @@ function jsonRoot(text:string){try{return JSON.parse(text);}catch{return null;}}
 function assignedJson(text:string,name:string){const marker=text.indexOf(name);if(marker<0)return null;const start=text.indexOf('{',marker+name.length);if(start<0)return null;let depth=0,inStr=false,esc=false;for(let i=start;i<text.length;i++){const ch=text[i];if(inStr){if(esc)esc=false;else if(ch==='\\')esc=true;else if(ch==='"')inStr=false;continue;}if(ch==='"'){inStr=true;continue;}if(ch==='{')depth++;else if(ch==='}'&&--depth===0){try{return JSON.parse(text.slice(start,i+1));}catch{return null;}}}return null;}
 function rootsFrom(text:string):any[]{const roots:any[]=[];const j=jsonRoot(text);if(j)roots.push(j,j?.data,j?.result,j?.data?.result);for(const name of ['window.pageData','window.__pageData__','pageData']){const x=assignedJson(text,name);if(x)roots.push(x,x?.data,x?.result,x?.data?.result);}return roots.filter(Boolean);}
 function itemsFrom(text:string):any[]{for(const r of rootsFrom(text)){const x=r?.mods?.listItems||r?.data?.mods?.listItems||r?.result?.mods?.listItems||r?.items||r?.listItems;if(Array.isArray(x))return x;}return[];}
-function makeItem(x:any):Item|undefined{const u=normalize(x?.itemUrl||x?.productUrl||x?.url||'');const n=String(x?.itemId||x?.item_id||x?.productId||'').match(/\d{6,}/)?.[0];const url=isProduct(u)?u:n?`${BASE}/i${n}.html`:'';if(!url)return;const p=deepPrice(x);if(p===undefined&&priceDiagnostics<5){priceDiagnostics++;priceShape(x);}return{title:clean(x?.name||x?.title||''),url,itemId:idOf(url),price:p??0,image:clean(x?.image||x?.imageUrl||x?.images?.[0])||undefined,raw:x};}
+function makeItem(x:any):Item|undefined{const u=normalize(x?.itemUrl||x?.productUrl||x?.url||'');const n=String(x?.itemId||x?.item_id||x?.productId||'').match(/\d{6,}/)?.[0];const url=isProduct(u)?u:n?`${BASE}/i${n}.html`:'';if(!url)return;const p=deepPrice(x);if(p===undefined)priceDiag(x);return{title:clean(x?.name||x?.title||''),url,itemId:idOf(url),price:p??0,image:clean(x?.image||x?.imageUrl||x?.images?.[0])||undefined,raw:x};}
 function extractItems(text:string):Item[]{const out=new Map<string,Item>();for(const x of itemsFrom(text)){const p=makeItem(x);if(p&&!out.has(p.itemId))out.set(p.itemId,p);}return[...out.values()];}
 
 const SPEC_KEY=/^(brand|brand\s*name|model|model\s*name|series|color|colour|color\s*family|ram|ram\s*memory|memory|storage|storage\s*capacity|rom|internal\s*storage|display|screen|screen\s*size|resolution|refresh\s*rate|processor|cpu|gpu|graphics|chipset|operating\s*system|os|camera|rear\s*camera|front\s*camera|battery|battery\s*capacity|network|sim|sim\s*type|connectivity|wifi|bluetooth|ports?|usb|hdmi|dimensions?|dimension|weight|capacity|power|power\s*consumption|voltage|warranty|warranty\s*period|condition|type|product\s*type|panel|panel\s*type|brightness|response\s*time|printer\s*type|print\s*speed|paper\s*size|lens|sensor|megapixel|zoom|video|refrigerant|energy\s*rating|wash\s*capacity|spin\s*speed|cooling\s*capacity|inverter|tonnage|door\s*type|installation\s*type)$/i;
