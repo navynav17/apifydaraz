@@ -1,0 +1,20 @@
+{
+  "title": "Daraz Nepal Collector Input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "category": {
+      "title": "Category",
+      "type": "string",
+      "description": "One category/search query per Actor run.",
+      "editor": "select",
+      "enum": ["smartphone","tablet","laptop","desktop computer","printer","camera","smart tv","computer monitor","refrigerator","washing machine","air conditioner","dishwasher"],
+      "default": "smartphone"
+    },
+    "maxPages": { "title": "Maximum Pages", "type": "integer", "default": 1000, "minimum": 1, "maximum": 1000 },
+    "minPrice": { "title": "Minimum Price (NPR)", "type": "integer", "default": 5000, "minimum": 0 },
+    "pageDelayMs": { "title": "Search Page Delay (ms)", "type": "integer", "default": 1500, "minimum": 500, "maximum": 30000 },
+    "detailDelayMs": { "title": "Product Detail Delay (ms)", "type": "integer", "default": 1500, "minimum": 500, "maximum": 30000 }
+  },
+  "required": ["category"]
+}
