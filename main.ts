@@ -24,11 +24,19 @@ function normalizeUrl(value: string): string { try { const u = new URL(value, BA
 function itemId(url: string): string { return url.match(/-i(\d+)(?:-s\d+)?\.html/i)?.[1] || url; }
 function blocked(text: string): boolean { const t = text.toLowerCase(); return ['verify you are human','captcha','are you a robot','unusual traffic','access denied','robot check'].some(x => t.includes(x)); }
 
-async function prepare(page: Page) {
+async function prepare(page: Page, blockHeavyResources = false) {
   await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36');
   await page.setViewport({ width: 1366, height: 900, deviceScaleFactor: 1 });
   await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' });
-  page.setDefaultNavigationTimeout(60000);
+  page.setDefaultNavigationTimeout(45000);
+  if (blockHeavyResources) {
+    await page.setRequestInterception(true);
+    page.on('request', req => {
+      const type = req.resourceType();
+      if (type === 'image' || type === 'media' || type === 'font') req.abort();
+      else req.continue();
+    });
+  }
 }
 
 async function extractSearch(page: Page): Promise<SearchProduct[]> {
@@ -69,13 +77,13 @@ async function extractPdp(page: Page) {
 
 async function search(page: Page, query: string, n: number): Promise<SearchProduct[]> {
   const url=`${BASE}/catalog/?q=${encodeURIComponent(query)}&page=${n}`; console.log(`SEARCH ${n}: ${url}`);
-  await page.goto(url,{waitUntil:'domcontentloaded',timeout:60000}); await sleep(4000);
+  await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000}); await sleep(3000);
   const body=await page.evaluate(()=>document.body?.innerText||''); if(blocked(body)) throw new Error(`Daraz CAPTCHA/block detected on search page ${n}`); return extractSearch(page);
 }
 
 async function detail(page: Page, p: SearchProduct, minPrice: number): Promise<Product|null> {
   try {
-    await page.goto(p.url,{waitUntil:'domcontentloaded',timeout:60000}); await sleep(1800);
+    await page.goto(p.url,{waitUntil:'domcontentloaded',timeout:45000}); await sleep(900);
     const body=await page.evaluate(()=>document.body?.innerText||''); if(blocked(body)) throw new Error('Daraz CAPTCHA/block detected on PDP');
     const d=await extractPdp(page) as any, finalPrice=d.price??p.price; if(!finalPrice||finalPrice<minPrice)return null;
     const specifications=d.specifications||{};
@@ -113,25 +121,37 @@ async function main() {
   const input=(await Actor.getInput()||{}) as any;
   const category=String(input.category||'smartphone').trim().toLowerCase(); if(!CATEGORIES[category])throw new Error(`Invalid category: ${category}`);
   const query=CATEGORIES[category], maxPages=Math.max(1,Math.min(1000,Number(input.maxPages||1000))), minPrice=Math.max(0,Number(input.minPrice??5000));
-  const pageDelayMs=Math.max(500,Number(input.pageDelayMs||1000)), detailDelayMs=Math.max(250,Number(input.detailDelayMs||500)), maxRunSeconds=Math.max(60,Number(input.maxRunSeconds||900));
+  const pageDelayMs=Math.max(250,Number(input.pageDelayMs||500)), detailDelayMs=Math.max(0,Number(input.detailDelayMs||100)), maxRunSeconds=Math.max(60,Number(input.maxRunSeconds||900));
+  const pdpConcurrency=Math.max(2,Math.min(6,Number(input.pdpConcurrency||6)));
   const startedAt=Date.now(),timedOut=()=>Date.now()-startedAt>=maxRunSeconds*1000;
-  console.log(`DARAZ NEPAL | ${category} | query=${query} | minPrice=NPR ${minPrice} | maxRunSeconds=${maxRunSeconds}`);
+  console.log(`DARAZ NEPAL | ${category} | query=${query} | minPrice=NPR ${minPrice} | maxRunSeconds=${maxRunSeconds} | pdpConcurrency=${pdpConcurrency}`);
   let browser:Browser|undefined; const seen=new Map<string,SearchProduct>(); let pagesProcessed=0,discovered=0,failedPdp=0,saved=0,supabaseSaved=0,supabaseFailed=0;
   try {
     browser=await puppeteer.launch({headless:'new',executablePath:CHROMIUM_PATH,args:['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--disable-gpu','--no-first-run','--no-zygote']});
-    const searchPage=await browser.newPage(),detailPage=await browser.newPage(); await prepare(searchPage);await prepare(detailPage);
+    const searchPage=await browser.newPage(); await prepare(searchPage);
+    const detailPages: Page[] = [];
+    for(let i=0;i<pdpConcurrency;i++){const pg=await browser.newPage();await prepare(pg,true);detailPages.push(pg);}
     for(let n=1;n<=maxPages;n++){
       if(timedOut()){console.log('TIME BUDGET REACHED BEFORE SEARCH COMPLETE; stopping.');break;}
       const products=await search(searchPage,query,n);pagesProcessed++;discovered+=products.length;if(!products.length){console.log(`NO PRODUCTS PAGE ${n}; stopping.`);break;}
       let added=0;for(const p of products){const url=normalizeUrl(p.url),id=itemId(url),pr=price(p.price);if(!pr||pr<minPrice)continue;const key=id||url;if(seen.has(key))continue;seen.set(key,{...p,url,itemId:id,price:pr});added++;}
       console.log(`PAGE ${n}: discovered=${products.length}, newEligible=${added}, total=${seen.size}`);await sleep(pageDelayMs);
     }
-    for(const p of seen.values()){
-      if(timedOut()){console.log(`TIME BUDGET REACHED DURING PDP PHASE; saved=${saved}, remaining=${Math.max(0,seen.size-saved)}`);break;}
-      const d=await detail(detailPage,p,minPrice);if(!d){failedPdp++;continue;}
-      try{await saveToSupabase(d,category,query,supabase);supabaseSaved++;}catch(e){supabaseFailed++;console.error(`SUPABASE FAILED ${d.itemId}:`,e instanceof Error?e.message:String(e));continue;}
-      await Actor.pushData({...d,category,searchQuery:query,marketplace:'Daraz Nepal',currency:'NPR',collectedAt:new Date().toISOString()});saved++;if(saved%10===0)console.log(`SAVED ${saved}/${seen.size}`);await sleep(detailDelayMs);
+
+    const queue=[...seen.values()];
+    for(let start=0;start<queue.length&&!timedOut();start+=pdpConcurrency){
+      const batch=queue.slice(start,start+pdpConcurrency);
+      const results=await Promise.all(batch.map((p,i)=>detail(detailPages[i],p,minPrice)));
+      for(let i=0;i<results.length;i++){
+        const d=results[i];
+        if(!d){failedPdp++;continue;}
+        try{await saveToSupabase(d,category,query,supabase);supabaseSaved++;}catch(e){supabaseFailed++;console.error(`SUPABASE FAILED ${d.itemId}:`,e instanceof Error?e.message:String(e));continue;}
+        await Actor.pushData({...d,category,searchQuery:query,marketplace:'Daraz Nepal',currency:'NPR',collectedAt:new Date().toISOString()});saved++;
+      }
+      if(saved%10===0||start+pdpConcurrency>=queue.length)console.log(`SAVED ${saved}/${seen.size}`);
+      if(detailDelayMs>0)await sleep(detailDelayMs);
     }
+    if(timedOut()) console.log(`TIME BUDGET REACHED DURING PDP PHASE; saved=${saved}, remaining=${Math.max(0,seen.size-saved)}`);
     await Actor.pushData({_type:'summary',category,searchQuery:query,pagesProcessed,discovered,eligibleProducts:seen.size,savedProducts:saved,failedPdp,supabaseSaved,supabaseFailed,minPrice,timeBudgetSeconds:maxRunSeconds,completedAt:new Date().toISOString()});
     console.log(`COMPLETE | pages=${pagesProcessed} discovered=${discovered} eligible=${seen.size} saved=${saved} failedPdp=${failedPdp} supabaseSaved=${supabaseSaved} supabaseFailed=${supabaseFailed}`);
   } finally { if(browser)await browser.close();await Actor.exit(); }
