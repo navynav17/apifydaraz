@@ -18,7 +18,7 @@ function clean(v:unknown){return String(v??'').replace(/\s+/g,' ').trim();}
 function price(v:unknown):number|undefined{const m=String(v??'').replace(/,/g,'').match(/\d+(?:\.\d+)?/);if(!m)return;const n=Number(m[0]);return Number.isFinite(n)?n:undefined;}
 function parsePriceText(v:unknown){const m=clean(v).match(/(?:Rs\.?|NPR)\s*[\d,]+(?:\.\d+)?/i);return m?price(m[0]):price(v);}
 function normalizeUrl(v:string){try{const u=new URL(v,BASE);return `${u.origin}${u.pathname}`;}catch{return v;}}
-function itemId(url:string){return url.match(/\/i(\d+)(?:-s\d+)?\.html(?:$|[?#])/i)?.[1]||url;}
+function itemId(url:string){return url.match(/\/i(\d+)(?:-s\d+)?\.html/i)?.[1]||url;}
 function blocked(text:string){const t=text.toLowerCase();return ['verify you are human','captcha','are you a robot','unusual traffic','access denied','robot check'].some(x=>t.includes(x));}
 async function httpGet(url:string,timeoutMs=30000){const c=new AbortController(),timer=setTimeout(()=>c.abort(),timeoutMs);try{const r=await fetch(url,{signal:c.signal,redirect:'follow',headers:{'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36','Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8','Accept-Language':'en-US,en;q=0.9','Cache-Control':'no-cache'}});return{status:r.status,contentType:r.headers.get('content-type')||'',html:await r.text()};}finally{clearTimeout(timer);}}
 function addSpec(s:Record<string,string>,k:unknown,v:unknown){const key=clean(k),val=clean(v);if(!key||!val||key.length>150||val.length>2000)return;if(!s[key])s[key]=val;}
