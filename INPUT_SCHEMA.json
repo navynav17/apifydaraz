@@ -3,29 +3,28 @@
   "type": "object",
   "schemaVersion": 1,
   "properties": {
+    "brand": {
+      "title": "Brand",
+      "type": "string",
+      "description": "Brand to search. Every Daraz search uses Brand + Category.",
+      "editor": "textfield",
+      "default": "Samsung"
+    },
     "category": {
       "title": "Category",
       "type": "string",
-      "description": "One category per Actor run.",
+      "description": "Category to search together with the brand.",
       "editor": "select",
       "enum": ["smartphone","tablet","laptop","desktop computer","printer","camera","smart tv","computer monitor","refrigerator","washing machine","air conditioner","dishwasher"],
       "default": "smartphone"
     },
-    "maxProducts": {
-      "title": "Maximum Products",
+    "maxSearchPages": {
+      "title": "Maximum Search Pages",
       "type": "integer",
-      "description": "Maximum category-matched PDPs to request.",
-      "default": 120,
+      "description": "Maximum Daraz search pages for the Brand + Category query.",
+      "default": 100,
       "minimum": 1,
-      "maximum": 2000
-    },
-    "maxSitemaps": {
-      "title": "Maximum Product Sitemaps",
-      "type": "integer",
-      "description": "Maximum child product sitemaps to download.",
-      "default": 60,
-      "minimum": 1,
-      "maximum": 60
+      "maximum": 100
     },
     "minPrice": {
       "title": "Minimum Price (NPR)",
@@ -38,14 +37,14 @@
       "title": "PDP HTTP Concurrency",
       "type": "integer",
       "description": "Number of product pages requested concurrently.",
-      "default": 12,
+      "default": 6,
       "minimum": 1,
       "maximum": 30
     },
     "detailDelayMs": {
       "title": "PDP Delay (ms)",
       "type": "integer",
-      "description": "Delay between PDP batches.",
+      "description": "Delay between PDP requests.",
       "default": 100,
       "minimum": 0,
       "maximum": 10000
@@ -59,5 +58,5 @@
       "maximum": 3600
     }
   },
-  "required": ["category"]
+  "required": ["brand","category"]
 }
