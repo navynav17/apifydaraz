@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": { "start": "tsx main.ts" },
   "dependencies": {
+    "@supabase/supabase-js": "2.109.0",
     "apify": "^3.5.2",
     "puppeteer": "^21.5.2",
     "tsx": "^4.19.2",
