@@ -8,13 +8,53 @@
       "type": "string",
       "description": "One category/search query per Actor run.",
       "editor": "select",
-      "enum": ["smartphone","tablet","laptop","desktop computer","printer","camera","smart tv","computer monitor","refrigerator","washing machine","air conditioner","dishwasher"],
+      "enum": [
+        "smartphone",
+        "tablet",
+        "laptop",
+        "desktop computer",
+        "printer",
+        "camera",
+        "smart tv",
+        "computer monitor",
+        "refrigerator",
+        "washing machine",
+        "air conditioner",
+        "dishwasher"
+      ],
       "default": "smartphone"
     },
-    "maxPages": { "title": "Maximum Pages", "type": "integer", "default": 1000, "minimum": 1, "maximum": 1000 },
-    "minPrice": { "title": "Minimum Price (NPR)", "type": "integer", "default": 5000, "minimum": 0 },
-    "pageDelayMs": { "title": "Search Page Delay (ms)", "type": "integer", "default": 1500, "minimum": 500, "maximum": 30000 },
-    "detailDelayMs": { "title": "Product Detail Delay (ms)", "type": "integer", "default": 1500, "minimum": 500, "maximum": 30000 }
+    "maxPages": {
+      "title": "Maximum Pages",
+      "type": "integer",
+      "description": "Maximum number of Daraz search result pages to crawl.",
+      "default": 1000,
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "minPrice": {
+      "title": "Minimum Price (NPR)",
+      "type": "integer",
+      "description": "Exclude products whose final PDP price is below this NPR amount.",
+      "default": 5000,
+      "minimum": 0
+    },
+    "pageDelayMs": {
+      "title": "Search Page Delay (ms)",
+      "type": "integer",
+      "description": "Delay between Daraz search result pages.",
+      "default": 1500,
+      "minimum": 500,
+      "maximum": 30000
+    },
+    "detailDelayMs": {
+      "title": "Product Detail Delay (ms)",
+      "type": "integer",
+      "description": "Delay between Daraz product detail page requests.",
+      "default": 1500,
+      "minimum": 500,
+      "maximum": 30000
+    }
   },
   "required": ["category"]
 }
