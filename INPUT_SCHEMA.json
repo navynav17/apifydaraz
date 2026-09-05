@@ -1,59 +1,62 @@
 {
-  "title": "Daraz Nepal Collector Input",
+  "title": "Daraz Nepal HTTP Collector Input",
   "type": "object",
   "schemaVersion": 1,
   "properties": {
     "category": {
       "title": "Category",
       "type": "string",
-      "description": "One category/search query per Actor run.",
+      "description": "One category per Actor run.",
       "editor": "select",
-      "enum": [
-        "smartphone",
-        "tablet",
-        "laptop",
-        "desktop computer",
-        "printer",
-        "camera",
-        "smart tv",
-        "computer monitor",
-        "refrigerator",
-        "washing machine",
-        "air conditioner",
-        "dishwasher"
-      ],
+      "enum": ["smartphone","tablet","laptop","desktop computer","printer","camera","smart tv","computer monitor","refrigerator","washing machine","air conditioner","dishwasher"],
       "default": "smartphone"
     },
-    "maxPages": {
-      "title": "Maximum Pages",
+    "maxProducts": {
+      "title": "Maximum Products",
       "type": "integer",
-      "description": "Maximum number of Daraz search result pages to crawl.",
-      "default": 1000,
+      "description": "Maximum category-matched PDPs to request.",
+      "default": 120,
       "minimum": 1,
-      "maximum": 1000
+      "maximum": 2000
+    },
+    "maxSitemaps": {
+      "title": "Maximum Product Sitemaps",
+      "type": "integer",
+      "description": "Maximum child product sitemaps to download.",
+      "default": 60,
+      "minimum": 1,
+      "maximum": 60
     },
     "minPrice": {
       "title": "Minimum Price (NPR)",
       "type": "integer",
-      "description": "Exclude products whose final PDP price is below this NPR amount.",
+      "description": "Exclude products whose final PDP price is below this amount.",
       "default": 5000,
       "minimum": 0
     },
-    "pageDelayMs": {
-      "title": "Search Page Delay (ms)",
+    "pdpConcurrency": {
+      "title": "PDP HTTP Concurrency",
       "type": "integer",
-      "description": "Delay between Daraz search result pages.",
-      "default": 1500,
-      "minimum": 500,
-      "maximum": 30000
+      "description": "Number of product pages requested concurrently.",
+      "default": 12,
+      "minimum": 1,
+      "maximum": 30
     },
     "detailDelayMs": {
-      "title": "Product Detail Delay (ms)",
+      "title": "PDP Delay (ms)",
       "type": "integer",
-      "description": "Delay between Daraz product detail page requests.",
-      "default": 1500,
-      "minimum": 500,
-      "maximum": 30000
+      "description": "Delay between PDP batches.",
+      "default": 100,
+      "minimum": 0,
+      "maximum": 10000
+    },
+    "maxRunSeconds": {
+      "title": "Maximum Run Seconds",
+      "type": "integer",
+      "description": "Internal safety time budget.",
+      "default": 900,
+      "minimum": 60,
+      "maximum": 3600
     }
   },
   "required": ["category"]
