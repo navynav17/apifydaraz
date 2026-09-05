@@ -7,8 +7,6 @@ const CHROMIUM_PATH = '/usr/bin/chromium';
 const DARAZ_MARKETPLACE_ID = '6a4f8822-e1bc-4e8b-be61-4d1a400f3c13';
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://foupthwcnnskqlzhoyep.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!SUPABASE_SERVICE_ROLE_KEY) throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable');
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 
 const CATEGORIES: Record<string, string> = {
   smartphone: 'smartphone', tablet: 'tablet', laptop: 'laptop',
@@ -85,7 +83,7 @@ async function detail(page: Page, p: SearchProduct, minPrice: number): Promise<P
   } catch(e){ console.error(`PDP FAILED ${p.url}:`,e instanceof Error?e.message:String(e)); return null; }
 }
 
-async function saveToSupabase(product: Product, category: string, query: string): Promise<string> {
+async function saveToSupabase(product: Product, category: string, query: string, supabase: ReturnType<typeof createClient>): Promise<string> {
   const { data: row, error: productError } = await supabase.from('products').upsert({
     title:product.title, price:product.price, currency:'NPR', image:product.image||null, link:product.url,
     reviews:product.reviewCount??null, rating:product.rating??null, search_term:query, website:'Daraz Nepal',
@@ -110,6 +108,8 @@ async function saveToSupabase(product: Product, category: string, query: string)
 
 async function main() {
   await Actor.init();
+  if (!SUPABASE_SERVICE_ROLE_KEY) throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable');
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
   const input=(await Actor.getInput()||{}) as any;
   const category=String(input.category||'smartphone').trim().toLowerCase(); if(!CATEGORIES[category])throw new Error(`Invalid category: ${category}`);
   const query=CATEGORIES[category], maxPages=Math.max(1,Math.min(1000,Number(input.maxPages||1000))), minPrice=Math.max(0,Number(input.minPrice??5000));
@@ -129,7 +129,7 @@ async function main() {
     for(const p of seen.values()){
       if(timedOut()){console.log(`TIME BUDGET REACHED DURING PDP PHASE; saved=${saved}, remaining=${Math.max(0,seen.size-saved)}`);break;}
       const d=await detail(detailPage,p,minPrice);if(!d){failedPdp++;continue;}
-      try{await saveToSupabase(d,category,query);supabaseSaved++;}catch(e){supabaseFailed++;console.error(`SUPABASE FAILED ${d.itemId}:`,e instanceof Error?e.message:String(e));continue;}
+      try{await saveToSupabase(d,category,query,supabase);supabaseSaved++;}catch(e){supabaseFailed++;console.error(`SUPABASE FAILED ${d.itemId}:`,e instanceof Error?e.message:String(e));continue;}
       await Actor.pushData({...d,category,searchQuery:query,marketplace:'Daraz Nepal',currency:'NPR',collectedAt:new Date().toISOString()});saved++;if(saved%10===0)console.log(`SAVED ${saved}/${seen.size}`);await sleep(detailDelayMs);
     }
     await Actor.pushData({_type:'summary',category,searchQuery:query,pagesProcessed,discovered,eligibleProducts:seen.size,savedProducts:saved,failedPdp,supabaseSaved,supabaseFailed,minPrice,timeBudgetSeconds:maxRunSeconds,completedAt:new Date().toISOString()});
