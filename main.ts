@@ -67,7 +67,7 @@ async function extractSearch(page: Page): Promise<SearchProduct[]> {
         if (text.length > 20 && ps.length) {
           const titleNode = node.querySelector("[class*='title'],[class*='name']");
           let title = clean(titleNode?.textContent || link.getAttribute('title') || link.textContent);
-          if (!title) title = text.split('\\n').map(clean).find(x=>x.length>15 && !/(?:Rs\\.?|NPR)\\s*[\\d,]+/i.test(x)) || '';
+          if (!title) title = text.split('\\n').map(clean).find(x=>x.length>15 && !/(?:Rs\\.?|NPR)\\s*[\d,]+/i.test(x)) || '';
           if (title && !seen.has(href)) {
             seen.add(href);
             const img = node.querySelector('img');
@@ -155,7 +155,7 @@ async function main() {
   const seen = new Map<string, SearchProduct>();
   let pagesProcessed=0, discovered=0, failedPdp=0, saved=0;
   try {
-    browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--disable-gpu','--no-first-run','--no-zygote'] });
+    browser = await puppeteer.launch({ headless: true, executablePath: '/usr/bin/chromium', args: ['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--disable-gpu','--no-first-run','--no-zygote'] });
     const searchPage = await browser.newPage();
     const detailPage = await browser.newPage();
     await prepare(searchPage); await prepare(detailPage);
