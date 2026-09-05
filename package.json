@@ -1,0 +1,13 @@
+{
+  "name": "daraz-nepal-apify",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "tsx main.ts" },
+  "dependencies": {
+    "apify": "^3.5.2",
+    "puppeteer": "^21.5.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}
