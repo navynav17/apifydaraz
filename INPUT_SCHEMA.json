@@ -19,8 +19,36 @@
     "category": {
       "title": "Category",
       "type": "string",
-      "description": "Enter any Daraz category or search term. Suggested examples are shown below, but the field remains fully editable.",
-      "editor": "textfield",
+      "description": "Select a suggested category or type any custom Daraz category/search term.",
+      "editor": "select",
+      "enumSuggestedValues": [
+        "smartphone",
+        "tablet",
+        "laptop",
+        "desktop computer",
+        "printer",
+        "camera",
+        "smart tv",
+        "computer monitor",
+        "refrigerator",
+        "washing machine",
+        "air conditioner",
+        "dishwasher"
+      ],
+      "enumTitles": [
+        "Smartphone",
+        "Tablet",
+        "Laptop",
+        "Desktop Computer",
+        "Printer",
+        "Camera",
+        "Smart TV",
+        "Computer Monitor",
+        "Refrigerator",
+        "Washing Machine",
+        "Air Conditioner",
+        "Dishwasher"
+      ],
       "default": "smartphone"
     },
     "maxSearchPages": {
