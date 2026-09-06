@@ -19,9 +19,22 @@
     "category": {
       "title": "Category",
       "type": "string",
-      "description": "Category to discover on Daraz.",
-      "editor": "select",
-      "enum": ["smartphone","tablet","laptop","desktop computer","printer","camera","smart tv","computer monitor","refrigerator","washing machine","air conditioner","dishwasher"],
+      "description": "Enter any Daraz category or search term. The suggestions below are examples only and are not a restriction.",
+      "editor": "textfield",
+      "enumSuggestedValues": [
+        "smartphone",
+        "tablet",
+        "laptop",
+        "desktop computer",
+        "printer",
+        "camera",
+        "smart tv",
+        "computer monitor",
+        "refrigerator",
+        "washing machine",
+        "air conditioner",
+        "dishwasher"
+      ],
       "default": "smartphone"
     },
     "maxSearchPages": {
